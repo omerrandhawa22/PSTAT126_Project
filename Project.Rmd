@@ -1,0 +1,112 @@
+---
+title: "PSTAT 126 Project"
+author: Jeff Shen
+date: "2023-04-27"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include = FALSE}
+# default code chunk options
+knitr::opts_chunk$set(echo = T,
+                      results = 'markup',
+                      message = F, 
+                      warning = F,
+                      fig.width = 4,
+                      fig.height = 3,
+                      fig.align = 'center') 
+
+# load packages
+library(faraway)
+library(tidyverse)
+library(tidymodels)
+library(modelr)
+library(ggplot2)
+```
+## Introduction
+
+
+In this project, we will analyze the relationship between income and education using the income.csv dataset. Rather than simply comparing income levels and education levels, we will aggregate the data by calculating the percentage of individuals with income >50k for each education level. This will allow us to create a quantitative variable for the proportion of individuals in each education level who earn a high income, which we can then use to explore the relationship between education and income. The dataset of interest comes from the UCI Machine Learning Repository and is available on Kaggle as well at: https://www.kaggle.com/datasets/uciml/adult-census-income. It contains information about individuals from the 1994 Census database, including demographic variables such as age, education, marital status, occupation, and more.
+
+The variable of interest for this analysis is the income column, and we will be using a simple linear regression model to examine its relationship with education.
+
+## Hypotheses
+
+
+Our objective is to investigate the relationship between education and income among individuals in the 1994 Census database by aggregating the data to calculate the percentage of individuals with income >50k for each education level. We aim to determine whether there is a positive linear relationship between education and the proportion of individuals with high income.
+
+Null hypothesis: There is no significant positive linear relationship between education and the proportion of individuals with high income in the 1994 Census database. The beta coefficient for education (β1) in a linear regression model predicting the proportion of individuals with high income is equal to zero.
+
+$$H_0: \beta_1 = 0$$
+
+Alternative hypothesis: There is a significant positive linear relationship between education and the proportion of individuals with high income in the 1994 Census database, with higher levels of education associated with a higher proportion of individuals with high income. The beta coefficient for education (β1) in a linear regression model predicting the proportion of individuals with high income is greater than zero.
+
+$$H_a: \beta_1 > 0$$
+
+We can test these hypotheses using a linear regression model and examining the p-value associated with the beta coefficient for education. If the p-value is less than our chosen significance level (typically 0.05), we can reject the null hypothesis and conclude that there is evidence of a positive linear relationship between education and the proportion of individuals with high income.
+
+## Checking the Assumptions for Linear Regression
+```{r}
+income_data <- read.csv("~/Desktop/adult.csv")
+head(income_data)
+```
+```{r assumption_plots, fig.show = 'show', echo=FALSE}
+# Divide into education levels
+edu_levels <- c("Preschool", "1st-4th", "5th-6th", "7th-8th", "9th", "10th", "11th", "12th",
+                "HS-grad", "Some-college", "Assoc-acdm", "Assoc-voc", "Bachelors", "Masters", "Prof-school", "Doctorate")
+
+# Transform each education level to an 'education number' to compare 2 quantitative variables
+income_data <- income_data %>%
+  mutate(education_num = match(education, edu_levels))
+
+# Calculate the percentage of individuals making over 50k in each education group to create data aggregation for income discrepancies 
+income_summary <- income_data %>%
+  group_by(education_num) %>%
+  summarize(prop_over_50k = mean(income == ">50K"))
+
+# Create a scatterplot of education level (numerical) vs. proportion over 50k
+ggplot(income_summary, aes(x = education_num, y = prop_over_50k)) +
+  geom_point() +
+  labs(x = "Education Level", y = "Proportion Making Over 50K") +
+  scale_x_continuous(breaks = c(1:length(edu_levels)), labels = edu_levels) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        plot.title = element_text(size = 11, hjust = 0.5, vjust = 1.5))
+
+# Create a bar graph of proportion of high income individuals by education level
+ggplot(data=income_summary, aes(x = education_num, y = prop_over_50k)) +
+  geom_bar(stat = "identity", fill = "#377EB8") +
+  labs(x = "Education Level", y = "Proportion with Income > 50K", title = "Proportion of High Income by Education") +
+  scale_x_continuous(breaks = c(1:length(edu_levels)), labels = edu_levels) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+    plot.title = element_text(size = 11, hjust = 0.5, vjust = 1.5))
+
+# Create a stacked bar chart of income against education level
+ggplot(data = income_data, aes(x = education_num, fill = income)) +
+  geom_bar(position = "stack") +
+  labs(x = "Education Level", y = "Count", title = "Distribution of Income by Education Level") +
+  scale_x_continuous(breaks = 1:length(edu_levels), labels = edu_levels) +
+  scale_fill_manual(values = c("#377EB8", "#E41A1C"), labels = c("<=50K", ">50K")) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        plot.title = element_text(size = 10, hjust = 0.5, vjust = 1.5))
+```
+
+
+```{r}
+# Perform linear regression
+lm_fit <- lm(prop_over_50k ~ education_num, data = income_summary)
+summary(lm_fit)
+
+# Plot trend line
+ggplot(income_summary, aes(x = education_num, y = prop_over_50k)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "Education Level", y = "Proportion Making Over 50K") +
+  scale_x_continuous(breaks = c(1:length(edu_levels)), labels = edu_levels) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+    plot.title = element_text(size = 11, hjust = 0.5, vjust = 1.5))
+```
+```{r}
+beta_1 <- coef(lm_fit)[2]
+cat("beta_1 coefficient: ", beta_1, "\n")
+```
