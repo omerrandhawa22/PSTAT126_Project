@@ -110,3 +110,17 @@ ggplot(income_summary, aes(x = education_num, y = prop_over_50k)) +
 beta_1 <- coef(lm_fit)[2]
 cat("beta_1 coefficient: ", beta_1, "\n")
 ```
+#Checking assumption of normality of residuals for the linear model
+```{r}
+lm_fit <- lm(prop_over_50k ~ education_num, data = income_summary)
+boxplot(lm_fit$residuals, main="Residual Box Plot")
+hist(lm_fit$residuals, main = "Residual Histogram")
+#vector of the the residuals
+vec_res<-resid(lm_fit)
+avg<-mean(vec_res)
+med<-median(vec_res)
+
+print(med)
+#since the median is about 0 1/2 of the data lies on either side
+```
+
